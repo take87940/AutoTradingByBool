@@ -1,15 +1,16 @@
+#Version 2: Add Flush Mechinsm
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 # 模擬參數
-n = 96 * 60 # 96K per day
+n = 96 * 30 # 96K per day
 S0 = 10000 # Begining Prices
 mu = 0.00001 # every 15 mins 0.005% → a day 0.5%
 sigma = 0.00306 # every 15 mins volatility ≈ a day 0.306%
 dt = 1 # 15 mins
 
-np.random.seed(23)
+np.random.seed(1)
 W = np.random.normal(loc=0, scale=np.sqrt(dt), size=n)
 price_series = S0 * np.exp((mu - 0.5 * sigma**2) * dt + sigma * W).cumprod()
 
@@ -82,7 +83,7 @@ for i in range(len(df)):
         transactions.append({
             "Index": i, "Action": "Short", "Price": price, "Amount": unit * price, "Fee": cost,
             "Balance": balance, "Position": position,
-            "Account Value": balance + position * price,
+            "Account Value": balance - position * price,
             "Avg Position Price": avg_position_price, "Unrealized P&L": (avg_position_price - price) * abs(position)
         })
 
@@ -99,7 +100,7 @@ for i in range(len(df)):
         transactions.append({
             "Index": i, "Action": "Cover", "Price": price, "Amount": unit * price, "Fee": cost,
             "Balance": balance, "Position": position,
-            "Account Value": balance + position * price,
+            "Account Value": balance - position * price,
             "Avg Position Price": avg_position_price if position < 0 else 0,
             "Unrealized P&L": (avg_position_price - price) * abs(position) if position < 0 else 0
         })
@@ -107,8 +108,8 @@ for i in range(len(df)):
 # 最後清算
 if position != 0:
     final_price = df["price"].iloc[-1]
-    cost = position * final_price * fee_rate 
-    balance += position * final_price - cost
+    cost = abs(position) * final_price * fee_rate 
+    balance += abs(position) * final_price - cost
 
     transactions.append({
         "Index": len(df) - 1, "Action": "Close Position", "Price": final_price,
@@ -121,7 +122,7 @@ if position != 0:
 transaction_df = pd.DataFrame(transactions)
 print(transaction_df.tail)
 transaction_df.columns = ["索引", "操作", "價格", "交易金額", "手續費", "現金餘額", "持倉數量", "帳戶浮動價值", "持倉均價", "浮動盈虧"]
-transaction_df.to_excel("交易記錄_unit為1percent.xlsx", index=False)
+transaction_df.to_excel("交易記錄.xlsx", index=False)
 print("已儲存交易紀錄")
 
 # 繪圖
