@@ -5,14 +5,17 @@ import matplotlib.pyplot as plt
 
 total = 0
 rounds = 1
+total_total_csot = 0
 for j in range(rounds):
     # 模擬參數
-    n = 96 * 30 # 96K per day
+    n = 96 * 60 # 96K per day
     S0 = 10000 # Begining Prices
     mu = 0.00001 # every 15 mins 0.005% → a day 0.5%
     sigma = 0.00306 # every 15 mins volatility ≈ a day 0.306%
     dt = 1 # 15 mins
 
+    total_cost = 0
+    
     np.random.seed(j)
     W = np.random.normal(loc=0, scale=np.sqrt(dt), size=n)
     price_series = S0 * np.exp((mu - 0.5 * sigma**2) * dt + sigma * W).cumprod()
@@ -41,6 +44,7 @@ for j in range(rounds):
         # 多單進場 買入0.01顆
         if df["Lower"].iloc[i] <= price <= (df["MA20"].iloc[i]*(1-range_multi) + df["Lower"].iloc[i]*range_multi)  and position >= 0:
             cost = unit * price * fee_rate #手續費
+            total_cost += cost
             balance -= unit * price + cost #帳戶餘額
             total_buy_cost += unit * price #倉位價值
             position += unit #持倉顆數變化
@@ -62,6 +66,7 @@ for j in range(rounds):
             if position >= 0.2 :
                 Sell_position = 0.1
                 cost = Sell_position * price * fee_rate #手續費
+                total_cost += cost
                 balance += Sell_position * price - cost #結算盈虧
                 total_buy_cost -= avg_position_price * Sell_position #賣出倉位價值
                 position -= Sell_position #清空持倉
@@ -77,6 +82,7 @@ for j in range(rounds):
                 })
             else:
                 cost = unit * price * fee_rate #手續費
+                total_cost += cost
                 balance += unit * price - cost #結算盈虧
                 total_buy_cost -= avg_position_price * unit #賣出倉位價值
                 position -= unit #持倉 -0.01顆
@@ -95,6 +101,7 @@ for j in range(rounds):
         # 空單進場 #賣出0.01顆
         elif df["Upper"].iloc[i] >= price >= (df["MA20"].iloc[i]*(1-range_multi) + df["Upper"].iloc[i]*range_multi) and position <= 0:
             cost = unit * price * fee_rate #手續費
+            total_cost += cost
             balance += unit * price - cost #帳戶餘額
             total_short_income += unit * price
             position -= unit
@@ -115,6 +122,7 @@ for j in range(rounds):
             if position <= -0.2 :
                 Sell_position = -0.1
                 cost = abs(Sell_position) * price * fee_rate #手續費
+                total_cost += cost
                 balance -= abs(Sell_position) * price + cost
                 total_short_income -= avg_position_price * abs(Sell_position)
                 position -= Sell_position
@@ -131,6 +139,7 @@ for j in range(rounds):
                 })
             else:
                 cost = unit * price * fee_rate #手續費
+                total_cost += cost
                 balance -= unit * price + cost
                 total_short_income -= avg_position_price * unit
                 position += unit
@@ -161,10 +170,10 @@ for j in range(rounds):
     # 匯出交易紀錄
     transaction_df = pd.DataFrame(transactions)
     #print(transaction_df.tail())
-    print(f"Round: {j}, {transaction_df.iloc[-1]["Account Value"]}")
+    print(f"Round: {j}, {transaction_df.iloc[-1]["Account Value"]}, Cost:{total_cost}")
     total += transaction_df.iloc[-1]["Account Value"]
-    
-print(total / rounds)
+    total_total_csot += total_cost
+print(total / rounds, total_total_csot / rounds)
 if(rounds != 1):
     exit()
 
