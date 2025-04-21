@@ -58,17 +58,18 @@ for j in range(rounds):
         # 多單出場 賣出0.01顆
         elif df["MA20"].iloc[i] <= price <= df["Upper"].iloc[i] and position > 0:
 
-            #如果累積超過20張多單(position >= 0.20)且當前價格高於均價時 => 一次全出
-            if position >= 0.2 and price >= avg_position_price:
-                cost = position * price * fee_rate #手續費
-                balance += position * price - cost #結算盈虧
-                total_buy_cost -= avg_position_price * position #賣出倉位價值
-                _position = position
-                position = 0 #清空持倉
-                avg_position_price = 0 #更新持倉均價
+            #如果累積超過20張多單(position >= 0.20) => 出一半(0.1)
+            if position >= 0.2 :
+                Sell_position = 0.1
+                cost = Sell_position * price * fee_rate #手續費
+                balance += Sell_position * price - cost #結算盈虧
+                total_buy_cost -= avg_position_price * Sell_position #賣出倉位價值
+                position -= Sell_position #清空持倉
+                position = round(position, 2)
+                avg_position_price = total_buy_cost / position if position != 0 else 0 #更新持倉均價
 
                 transactions.append({
-                    "Index": i, "Action": "Sell", "Price": price, "Amount": _position * price, "Fee": cost,
+                    "Index": i, "Action": "Sell", "Price": price, "Amount": Sell_position * price, "Fee": cost,
                     "Balance": balance, "Position": position,
                     "Account Value": balance + position * price,
                     "Avg Position Price": avg_position_price if position > 0 else 0,
@@ -110,18 +111,18 @@ for j in range(rounds):
 
         # 空單出場
         elif df["MA20"].iloc[i] >= price >= df["Lower"].iloc[i] and position < 0:
-            #如果累積超過20張空單(position <= -0.20)且當前價格低於均價時 => 一次全出
-            if position <= -0.2 and price <= avg_position_price:
-                cost = abs(position) * price * fee_rate #手續費
-                balance += abs(position) * price - cost
-                total_short_income -= avg_position_price * abs(position)
-                _position = position
-                position = 0
-                avg_position_price = 0
+            #如果累積超過20張空單(position <= -0.20) => 出一半(0.1)
+            if position <= -0.2 :
+                Sell_position = -0.1
+                cost = abs(Sell_position) * price * fee_rate #手續費
+                balance += abs(Sell_position) * price - cost
+                total_short_income -= avg_position_price * abs(Sell_position)
+                position -= Sell_position
+                avg_position_price = total_short_income / abs(position) if position != 0 else 0
                 #balance += (price - avg_position_price) * position
                 
                 transactions.append({
-                    "Index": i, "Action": "Cover", "Price": price, "Amount": abs(_position) * price, "Fee": cost,
+                    "Index": i, "Action": "Cover", "Price": price, "Amount": abs(Sell_position) * price, "Fee": cost,
                     "Balance": balance, "Position": position,
                     "Account Value": balance - position * price,
                     "Avg Position Price": avg_position_price if position < 0 else 0,
@@ -164,7 +165,8 @@ for j in range(rounds):
     total += transaction_df.iloc[-1]["Balance"]
     
 print(total / rounds)
-exit()
+if(round != 1):
+    exit()
 
 ##################################################################################################################################
 transaction_df.columns = ["索引", "操作", "價格", "交易金額", "手續費", "現金餘額", "持倉數量", "帳戶浮動價值", "持倉均價", "浮動盈虧"]
