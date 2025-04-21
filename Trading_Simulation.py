@@ -7,7 +7,7 @@ total = 0
 rounds = 100
 for j in range(rounds):
     # 模擬參數
-    n = 96 * 30 # 96K per day
+    n = 96 * 60 # 96K per day
     S0 = 10000 # Begining Prices
     mu = 0.00001 # every 15 mins 0.005% → a day 0.5%
     sigma = 0.00306 # every 15 mins volatility ≈ a day 0.306%
@@ -37,9 +37,9 @@ for j in range(rounds):
     for i in range(len(df)):
         price = df["price"].iloc[i]
         unit = 0.01  # 💡 每次交易金額為該價格的 1%
-
+        range_multi = 0.8
         # 多單進場 買入0.01顆
-        if df["Lower"].iloc[i] <= price <= (df["MA20"].iloc[i] + df["Lower"].iloc[i]) / 2  and position >= 0:
+        if df["Lower"].iloc[i] <= price <= (df["MA20"].iloc[i]*(1-range_multi) + df["Lower"].iloc[i]*range_multi)  and position >= 0:
             cost = unit * price * fee_rate #手續費
             balance -= unit * price + cost #帳戶餘額
             total_buy_cost += unit * price #倉位價值
@@ -51,12 +51,12 @@ for j in range(rounds):
             transactions.append({
                 "Index": i, "Action": "Buy", "Price": price, "Amount": unit * price, "Fee": cost,
                 "Balance": balance, "Position": position,
-                "Account Value": balance + position * price,
+                "Account Value": balance + position * avg_position_price,
                 "Avg Position Price": avg_position_price, "Unrealized P&L": (price - avg_position_price) * position
             })
 
         # 多單出場 賣出0.01顆
-        elif (df["MA20"].iloc[i] + df["Upper"].iloc[i]) / 2 <= price <= df["Upper"].iloc[i] and position > 0:
+        elif (df["MA20"].iloc[i]*(1-range_multi) + df["Upper"].iloc[i]*range_multi) <= price <= df["Upper"].iloc[i] and position > 0:
 
             #如果累積超過20張多單(position >= 0.20) => 出一半(0.1)
             if position >= 0.2 :
@@ -71,7 +71,7 @@ for j in range(rounds):
                 transactions.append({
                     "Index": i, "Action": "Sell", "Price": price, "Amount": Sell_position * price, "Fee": cost,
                     "Balance": balance, "Position": position,
-                    "Account Value": balance + position * price,
+                    "Account Value": balance + position * avg_position_price,
                     "Avg Position Price": avg_position_price if position > 0 else 0,
                     "Unrealized P&L": (price - avg_position_price) * position if position > 0 else 0
                 })
@@ -87,15 +87,15 @@ for j in range(rounds):
                 transactions.append({
                     "Index": i, "Action": "Sell", "Price": price, "Amount": unit * price, "Fee": cost,
                     "Balance": balance, "Position": position,
-                    "Account Value": balance + position * price,
+                    "Account Value": balance + position * avg_position_price,
                     "Avg Position Price": avg_position_price if position > 0 else 0,
                     "Unrealized P&L": (price - avg_position_price) * position if position > 0 else 0
                 })
 
         # 空單進場 #賣出0.01顆
-        elif df["Upper"].iloc[i] >= price >= (df["MA20"].iloc[i] + df["Upper"].iloc[i]) / 2 and position <= 0:
+        elif df["Upper"].iloc[i] >= price >= (df["MA20"].iloc[i]*(1-range_multi) + df["Upper"].iloc[i]*range_multi) and position <= 0:
             cost = unit * price * fee_rate #手續費
-            balance -= unit * price + cost #帳戶餘額
+            balance += unit * price - cost #帳戶餘額
             total_short_income += unit * price
             position -= unit
             position = round(position, 2)
@@ -105,32 +105,33 @@ for j in range(rounds):
             transactions.append({
                 "Index": i, "Action": "Short", "Price": price, "Amount": unit * price, "Fee": cost,
                 "Balance": balance, "Position": position,
-                "Account Value": balance - position * price,
+                "Account Value": balance + position * avg_position_price,
                 "Avg Position Price": avg_position_price, "Unrealized P&L": (avg_position_price - price) * abs(position)
             })
 
         # 空單出場
-        elif (df["MA20"].iloc[i] + df["Lower"].iloc[i]) / 2 >= price >= df["Lower"].iloc[i] and position < 0:
+        elif (df["MA20"].iloc[i]*(1-range_multi) + df["Lower"].iloc[i]*range_multi) >= price >= df["Lower"].iloc[i] and position < 0:
             #如果累積超過20張空單(position <= -0.20) => 出一半(0.1)
             if position <= -0.2 :
                 Sell_position = -0.1
                 cost = abs(Sell_position) * price * fee_rate #手續費
-                balance += abs(Sell_position) * price - cost
+                balance -= abs(Sell_position) * price + cost
                 total_short_income -= avg_position_price * abs(Sell_position)
                 position -= Sell_position
+                position = round(position, 2)
                 avg_position_price = total_short_income / abs(position) if position != 0 else 0
                 #balance += (price - avg_position_price) * position
                 
                 transactions.append({
                     "Index": i, "Action": "Cover", "Price": price, "Amount": abs(Sell_position) * price, "Fee": cost,
                     "Balance": balance, "Position": position,
-                    "Account Value": balance - position * price,
+                    "Account Value": balance + position * avg_position_price,
                     "Avg Position Price": avg_position_price if position < 0 else 0,
                     "Unrealized P&L": (avg_position_price - price) * abs(position) if position < 0 else 0
                 })
             else:
                 cost = unit * price * fee_rate #手續費
-                balance += unit * price - cost
+                balance -= unit * price + cost
                 total_short_income -= avg_position_price * unit
                 position += unit
                 position = round(position, 2)
@@ -140,7 +141,7 @@ for j in range(rounds):
                 transactions.append({
                     "Index": i, "Action": "Cover", "Price": price, "Amount": unit * price, "Fee": cost,
                     "Balance": balance, "Position": position,
-                    "Account Value": balance - position * price,
+                    "Account Value": balance + position * avg_position_price,
                     "Avg Position Price": avg_position_price if position < 0 else 0,
                     "Unrealized P&L": (avg_position_price - price) * abs(position) if position < 0 else 0
                 })
@@ -149,7 +150,7 @@ for j in range(rounds):
     if position != 0:
         final_price = df["price"].iloc[-1]
         cost = abs(position) * final_price * fee_rate 
-        balance += abs(position) * final_price - cost
+        balance += position * final_price - cost
 
         transactions.append({
             "Index": len(df) - 1, "Action": "Close Position", "Price": final_price,
