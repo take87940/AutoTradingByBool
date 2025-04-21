@@ -7,7 +7,7 @@ total = 0
 rounds = 1
 for j in range(rounds):
     # 模擬參數
-    n = 96 * 60 # 96K per day
+    n = 96 * 30 # 96K per day
     S0 = 10000 # Begining Prices
     mu = 0.00001 # every 15 mins 0.005% → a day 0.5%
     sigma = 0.00306 # every 15 mins volatility ≈ a day 0.306%
@@ -161,8 +161,8 @@ for j in range(rounds):
     # 匯出交易紀錄
     transaction_df = pd.DataFrame(transactions)
     #print(transaction_df.tail())
-    print(f"Round: {j}, {transaction_df.iloc[-1]["Balance"]}")
-    total += transaction_df.iloc[-1]["Balance"]
+    print(f"Round: {j}, {transaction_df.iloc[-1]["Account Value"]}")
+    total += transaction_df.iloc[-1]["Account Value"]
     
 print(total / rounds)
 if(rounds != 1):
