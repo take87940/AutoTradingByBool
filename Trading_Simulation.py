@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 total = 0
-rounds = 100
+rounds = 1
 for j in range(rounds):
     # 模擬參數
     n = 96 * 60 # 96K per day
@@ -146,18 +146,17 @@ for j in range(rounds):
                     "Unrealized P&L": (avg_position_price - price) * abs(position) if position < 0 else 0
                 })
 
-    # 最後清算
+    # 最後清算 => 不清算 只算倉位價值
     if position != 0:
-        final_price = df["price"].iloc[-1]
-        cost = abs(position) * final_price * fee_rate 
-        balance += position * final_price - cost
+        final_price = df["price"].iloc[-1] 
 
         transactions.append({
             "Index": len(df) - 1, "Action": "Close Position", "Price": final_price,
-            "Amount": abs(position) * final_price, "Fee": cost,
+            "Amount": abs(position) * final_price, "Fee": 0,
             "Balance": balance, "Position": 0,
-            "Account Value": balance, "Avg Position Price": 0, "Unrealized P&L": 0
+            "Account Value": balance + position * avg_position_price, "Avg Position Price": avg_position_price, "Unrealized P&L": (avg_position_price - price) * abs(position) if position < 0 else 0
         })
+        
 
     # 匯出交易紀錄
     transaction_df = pd.DataFrame(transactions)
