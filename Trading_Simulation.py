@@ -39,7 +39,7 @@ for j in range(rounds):
         unit = 0.01  # 💡 每次交易金額為該價格的 1%
 
         # 多單進場 買入0.01顆
-        if df["Lower"].iloc[i] <= price <= df["MA20"].iloc[i] and position >= 0:
+        if df["Lower"].iloc[i] <= price <= (df["MA20"].iloc[i] + df["Lower"].iloc[i]) / 2  and position >= 0:
             cost = unit * price * fee_rate #手續費
             balance -= unit * price + cost #帳戶餘額
             total_buy_cost += unit * price #倉位價值
@@ -56,7 +56,7 @@ for j in range(rounds):
             })
 
         # 多單出場 賣出0.01顆
-        elif df["MA20"].iloc[i] <= price <= df["Upper"].iloc[i] and position > 0:
+        elif (df["MA20"].iloc[i] + df["Upper"].iloc[i]) / 2 <= price <= df["Upper"].iloc[i] and position > 0:
 
             #如果累積超過20張多單(position >= 0.20) => 出一半(0.1)
             if position >= 0.2 :
@@ -93,7 +93,7 @@ for j in range(rounds):
                 })
 
         # 空單進場 #賣出0.01顆
-        elif df["Upper"].iloc[i] >= price >= df["MA20"].iloc[i] and position <= 0:
+        elif df["Upper"].iloc[i] >= price >= (df["MA20"].iloc[i] + df["Upper"].iloc[i]) / 2 and position <= 0:
             cost = unit * price * fee_rate #手續費
             balance -= unit * price + cost #帳戶餘額
             total_short_income += unit * price
@@ -110,7 +110,7 @@ for j in range(rounds):
             })
 
         # 空單出場
-        elif df["MA20"].iloc[i] >= price >= df["Lower"].iloc[i] and position < 0:
+        elif (df["MA20"].iloc[i] + df["Lower"].iloc[i]) / 2 >= price >= df["Lower"].iloc[i] and position < 0:
             #如果累積超過20張空單(position <= -0.20) => 出一半(0.1)
             if position <= -0.2 :
                 Sell_position = -0.1
@@ -165,7 +165,7 @@ for j in range(rounds):
     total += transaction_df.iloc[-1]["Balance"]
     
 print(total / rounds)
-if(round != 1):
+if(rounds != 1):
     exit()
 
 ##################################################################################################################################
